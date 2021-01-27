@@ -1,13 +1,14 @@
 import setuptools
 
-c_reader_module = setuptools.Extension('recorder_viz/librreader', ['lib/reader.c'])
+c_reader_module = setuptools.Extension('recorder_viz/librreader',
+                                        ['lib/reader.c'], include_dirs=['lib'])
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="recorder-viz",            # Package name, e.g., pip install recorder-viz
-    version="0.0.4",
+    version="0.0.6",
     author="Chen Wang",
     author_email="wangvsa@gmail.com",
     description="Utilities for processing Recorder traces",
