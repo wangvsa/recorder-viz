@@ -5,17 +5,26 @@ c_reader_module = setuptools.Extension('recorder_viz/librreader',
                                         ['recorder_viz/reader.c'], include_dirs=['recorder_viz'])
 
 class my_build_ext(build_ext):
-    def run(self):
-        self.libraries = None
-        # Call the parent method
-        build_ext.run(self)
+    # The default implementation of this function adds some
+    # libraries to the linker during the building process.
+    # e.g ['python3.x']
+    #
+    # However, in many clusters such as Theta and BlueWaters,
+    # the path of libpython.so is unkown to the build script
+    # thus it will cuase errors.
+    #
+    # Therefore, we overwrite this function to avoid adding
+    # additional libraries.
+    def get_libraries(self, ext):
+        return ext.libraries
+
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="recorder-viz",                # Package name, e.g., pip install recorder-viz
-    version="0.1.6",
+    version="0.1.7",
     author="Chen Wang",
     author_email="wangvsa@gmail.com",
     description="Utilities for processing Recorder traces",
