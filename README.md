@@ -3,7 +3,7 @@ recorder-viz
 
 This is a python package which contains tools for processing [Recorder](https://github.com/uiuc-hpc/Recorder) traces.
 
-Usnage
+Usage
 --------
 
 Install it using pip: `pip install recorder-viz`
