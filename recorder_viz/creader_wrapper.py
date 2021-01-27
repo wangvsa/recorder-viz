@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from ctypes import *
-import sys, os
+import os, glob
 
 class LocalMetadata(Structure):
     _fields_ = [
@@ -67,10 +67,13 @@ class RecorderReader:
         return c_char_p( s.encode('utf-8') )
 
     def __init__(self, logs_dir):
-        filedir = os.path.dirname(__file__)
-        basedir= os.path.abspath(os.path.dirname(__file__))
-        libreader_path = os.path.join(basedir, "./librreader.so")
+        current_dir = os.path.abspath(os.path.dirname(__file__))
+        search_path = os.path.abspath(os.path.join(current_dir, 'librreader*.so'))
 
+        libreader_path = ''
+        found = glob.glob(search_path)
+        if len(found) == 1:
+            libreader_path = found[0]
 
         libreader = cdll.LoadLibrary(libreader_path)
         libreader.read_records.restype = POINTER(Record)
@@ -103,4 +106,5 @@ class RecorderReader:
             self.funcs = [func.decode('utf-8').replace("PMPI", "MPI") for func in self.funcs]
 
 #if __name__ == "__main__":
+#    import sys
 #    reader = RecorderReader(sys.argv[1])

@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "./reader.h"
+#include "reader.h"
 
 void read_global_metadata(char* path, RecorderGlobalDef *RGD) {
     FILE* fp = fopen(path, "r+b");
