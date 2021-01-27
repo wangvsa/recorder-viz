@@ -20,7 +20,7 @@ setuptools.setup(
     description="Utilities for processing Recorder traces",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/wangvsa/recorder-utils",
+    url="https://github.com/wangvsa/recorder-viz",
     packages=['recorder_viz'],     # package for import: after installaion, import recorder_viz
     package_data={'recorder_viz': ['librreader.so']},
     classifiers=[
