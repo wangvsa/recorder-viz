@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 # encoding: utf-8
-import sys
-from creader_wrapper import RecorderReader
-
 def handle_data_operations(record, fileMap, offsetBook, func_list, endOfFile):
 
     def update_end_of_file(rank, fd, filename, endOfFile, offsetBook):
@@ -254,7 +251,3 @@ def build_offset_intervals(reader):
             intervals[filename].append( [rank, record.tstart, record.tend, offset, count, isRead, segments] )
 
     return intervals
-
-if __name__ == "__main__":
-    reader = RecorderReader(sys.argv[1])
-    build_offset_intervals(reader)

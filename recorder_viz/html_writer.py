@@ -2,9 +2,6 @@
 # encoding: utf-8
 import os, bokeh
 
-def relpath(path):
-    return os.path.relpath(path)
-
 css_style = """
 <style>
   html { font-size: 12px; }
