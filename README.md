@@ -80,7 +80,7 @@ class Record(Structure):
 ```
 
 
-Here's an example on how to use the provided class.
+Here's an example on how to use the provided classes.
 
 ```python
 from recorder_viz import RecorderReader
