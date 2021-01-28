@@ -26,6 +26,8 @@ recorder_viz.generate_report(reader, "output.html")
 
 The `generate_report` API will write out a HTML format visualization report.
 
+The visualization process can be slow for large traces. We recommend to use it only for small scale runs, e.g., < 128 ranks runs.
+
 
 Advanced Usages
 -------------
