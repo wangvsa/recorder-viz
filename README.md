@@ -30,7 +30,7 @@ The `generate_report` API will write out a HTML format visualization report.
 The visualization process can be slow for large traces. We recommend to use it only for small scale runs, e.g., < 128 ranks runs.
 
 Below are some example graphs generated from the [FLASH](http://flash.uchicago.edu) traces.
-![showoff](./tests/showoff.jpg)
+![example graphs](https://raw.githubusercontent.com/wangvsa/recorder-viz/main/tests/showoff.jpg)
 
 
 Advanced Usages
