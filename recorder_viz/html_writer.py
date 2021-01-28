@@ -32,8 +32,8 @@ css_style = """
 
 class HTMLWriter:
 
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, filename):
+        self.filename = filename
         self.bokeh_version = bokeh.__version__  # python bokeh version must match the JS version
         # 0
         self.performanceTable = ""
@@ -140,7 +140,7 @@ class HTMLWriter:
                 self.overallIOActivities, self.offsetVsRank, self.offsetVsTime, self.fileAccessPatterns, \
                 self.readIOSizes, self.writeIOSizes)
 
-        f = open("./recorder-report.html", "w")
+        f = open(self.filename, "w")
         f.write(html_content)
         f.close()
 

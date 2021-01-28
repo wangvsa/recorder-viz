@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from __future__ import absolute_import
-import math
+import math, os
 import numpy as np
 from bokeh.plotting import figure, output_file, show
 from bokeh.embed import components
@@ -13,10 +13,9 @@ from .html_writer import HTMLWriter
 from .build_offset_intervals import ignore_files
 from .build_offset_intervals import build_offset_intervals
 
-htmlWriter = HTMLWriter("./")
 
 # 0.0
-def record_counts(reader):
+def record_counts(reader, htmlWriter):
     y = []
     for LM in reader.LMs:
         y.append(LM.total_records)
@@ -27,7 +26,7 @@ def record_counts(reader):
     htmlWriter.recordCount = div+script
 
 # 1.1
-def file_counts(reader):
+def file_counts(reader, htmlWriter):
     y = []
     for LM in reader.LMs:
         num = 0
@@ -62,7 +61,7 @@ def pie_chart(x):
     return p
 
 # 2.1
-def function_layers(reader):
+def function_layers(reader, htmlWriter):
     func_list = reader.funcs
     x = {'hdf5':0, 'mpi':0, 'posix':0 }
     for LM in reader.LMs:
@@ -79,7 +78,7 @@ def function_layers(reader):
     htmlWriter.functionLayers = script+div
 
 # 2.2
-def function_patterns(all_intervals):
+def function_patterns(all_intervals, htmlWriter):
     # 1,2,3 - consecutive
     # 1,3,9 - sequential
     # 1,3,2 - random
@@ -122,7 +121,7 @@ def function_patterns(all_intervals):
     htmlWriter.functionPatterns = script+div
 
 # 2.3
-def function_counts(reader):
+def function_counts(reader, htmlWriter):
     func_list = reader.funcs
     aggregate = np.zeros(256)
     for LM in reader.LMs:
@@ -147,7 +146,7 @@ def function_counts(reader):
     script, div = components(p)
     htmlWriter.functionCount = div + script
 
-def function_times(reader):
+def function_times(reader, htmlWriter):
     func_list = reader.funcs
 
     aggregate = np.zeros(256)
@@ -179,7 +178,7 @@ def function_times(reader):
 
 
 # 3.1
-def overall_io_activities(reader):
+def overall_io_activities(reader, htmlWriter):
 
     func_list = reader.funcs
     nan = float('nan')
@@ -220,7 +219,7 @@ def overall_io_activities(reader):
     htmlWriter.overallIOActivities = div + script
 
 #3.2
-def offset_vs_rank(intervals):
+def offset_vs_rank(intervals, htmlWriter):
     # interval = [rank, tstart, tend, offset, count]
     def plot_for_one_file(filename, intervals):
         intervals = sorted(intervals, key=lambda x: x[3])   # sort by starting offset
@@ -259,7 +258,7 @@ def offset_vs_rank(intervals):
     htmlWriter.offsetVsRank = script+div
 
 # 3.3
-def offset_vs_time(intervals):
+def offset_vs_time(intervals, htmlWriter):
     # interval = [rank, tstart, tend, offset, count]
     def plot_for_one_file(filename, intervals):
         intervals = sorted(intervals, key=lambda x: x[1])   # sort by tstart
@@ -299,7 +298,7 @@ def offset_vs_time(intervals):
     htmlWriter.offsetVsTime = script+div
 
 # 3.4
-def file_access_patterns(intervals):
+def file_access_patterns(intervals, htmlWriter):
 
     def pattern_for_one_file(filename, intervals):
         pattern = {"RAR": {'S':0, 'D':0}, "RAW": {'S':0, 'D':0},
@@ -363,7 +362,7 @@ def file_access_patterns(intervals):
     htmlWriter.fileAccessPatterns = table.get_html_string()
 
 # 4
-def io_sizes(intervals, read=True):
+def io_sizes(intervals, htmlWriter, read=True):
 
     sizes = {}
     for filename in intervals:
@@ -393,27 +392,33 @@ def io_sizes(intervals, read=True):
         htmlWriter.writeIOSizes = div + script
 
 
-def generate_report(traces_dir):
-    reader = RecorderReader(traces_dir);
+def generate_report(reader, output_path):
+
+    output_path = os.path.abspath(output_path)
+    if output_path[-5:] != ".html":
+        output_path += ".html"
+
+    htmlWriter = HTMLWriter(output_path)
+
     intervals = build_offset_intervals(reader)
 
-    record_counts(reader)
+    record_counts(reader, htmlWriter)
 
-    file_counts(reader)
+    file_counts(reader, htmlWriter)
 
-    function_layers(reader)
-    function_patterns(intervals)
-    function_counts(reader)
-    function_times(reader)
+    function_layers(reader, htmlWriter)
+    function_patterns(intervals, htmlWriter)
+    function_counts(reader, htmlWriter)
+    function_times(reader, htmlWriter)
 
-    overall_io_activities(reader)
-    offset_vs_time(intervals)
-    offset_vs_rank(intervals)
+    overall_io_activities(reader, htmlWriter)
+    offset_vs_time(intervals, htmlWriter)
+    offset_vs_rank(intervals, htmlWriter)
 
-    file_access_patterns(intervals)
+    file_access_patterns(intervals, htmlWriter)
 
-    io_sizes(intervals, read=True)
-    io_sizes(intervals, read=False)
+    io_sizes(intervals, htmlWriter, read=True)
+    io_sizes(intervals, htmlWriter, read=False)
 
     htmlWriter.write_html()
 
