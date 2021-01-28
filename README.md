@@ -39,7 +39,7 @@ class RecorderReader:
     self.records: self.records[i] is a list of Record objects of rank i.
 ```
 
-`GlobalMetadta`, `LocalMetadata` and `Record` are three Python wrapper classes of C structures. 
+`GlobalMetadta`, `LocalMetadata` and `Record` are three Python wrappers of C structures. 
 
 ```python
 class LocalMetadata(Structure):
