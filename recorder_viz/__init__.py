@@ -1,3 +1,4 @@
-__version__ = "0.1.7"
+from __future__ import absolute_import
+from .creader_wrapper import RecorderReader
 
-from creader_wrapper.py import RecorderReader
+__version__ = "0.1.9"
