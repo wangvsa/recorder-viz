@@ -3,33 +3,43 @@ recorder-viz
 
 This is a python package which contains tools for processing [Recorder](https://github.com/uiuc-hpc/Recorder) traces.
 
-Usage
---------
+Installation
+-------------
 
-Install it using pip: `pip install recorder-viz`
+`pip install recorder-viz`
 
 
-Below is a simple code snippet shows how to use the provided class `RecorderReader`. 
+Visualization
+--------------
 
-Copy it to test.py and `run python test.py [path/to/Recorder traces folder]`
+We relie on a few libraries for visualization. Please install them first.
+
+Dependencies: [pandas](https://pandas.pydata.org/), [bokeh](https://docs.bokeh.org/) and [prettytable](https://pypi.org/project/PrettyTable/).
 
 ```python
-
-#!/usr/bin/env python
-# encoding: utf-8
-
-import sys
+import recorder_viz
 from recorder_viz import RecorderReader
 
-reader = RecorderReader(sys.argv[1])
-
-for rank in range(reader.GM.total_ranks):
-    LM = reader.LMs[rank]
-    print("Rank: %d, Number of trace records: %d" %(rank, LM.total_records))
+reader = RecorderReader("path/to/Recorder-traces-folder")
+recorder_viz.generate_report(reader, "output.html")
 ```
 
-Details
---------
+The `generate_report` API will write out a HTML format visualization report.
+
+
+Advanced Usages
+-------------
+
+The `RecorderReader` class contains all infomration about the Recorder traces.
+
+```python
+class RecorderReader:
+    self.GM: instance of GlobalMetadata
+    self.LMs: list of LocalMetadata objects, one for each rank
+    self.records: self.records[i] is a list of Record objects of rank i.
+```
+
+`GlobalMetadta`, `LocalMetadata` and `Record` are three Python wrapper classes of C structures. 
 
 ```python
 class LocalMetadata(Structure):
@@ -51,7 +61,6 @@ class GlobalMetadata(Structure):
             ("peephole_window_size", c_int),
     ]
 
-
 class Record(Structure):
     _fields_ = [
             ("status", c_char),
@@ -64,13 +73,22 @@ class Record(Structure):
     ]
 ```
 
-The above three classes are Python wrappers of C structures. They can be accessed through the
-Python class `RecorderReader` as the simple example shown at the begining.
+
+Here's an example on how to use the provided class.
+
+Copy it to test.py and `run python test.py [path/to/Recorder traces folder]`
 
 ```python
-class RecorderReader:
-    self.GM: instance of GlobalMetadata
-    self.LMs: list of LocalMetadata objects, one for each rank
-    self.records: list of list, self.records[i] is a list of Record objects of rank i.
 
+#!/usr/bin/env python
+# encoding: utf-8
+
+import sys
+from recorder_viz import RecorderReader
+
+reader = RecorderReader(sys.argv[1])
+
+for rank in range(reader.GM.total_ranks):
+    LM = reader.LMs[rank]
+    print("Rank: %d, Number of trace records: %d" %(rank, LM.total_records))
 ```
