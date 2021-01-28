@@ -76,17 +76,10 @@ class Record(Structure):
 
 Here's an example on how to use the provided class.
 
-Copy it to test.py and `run python test.py [path/to/Recorder traces folder]`
-
 ```python
-
-#!/usr/bin/env python
-# encoding: utf-8
-
-import sys
 from recorder_viz import RecorderReader
 
-reader = RecorderReader(sys.argv[1])
+reader = RecorderReader("path/to/Recorder-traces-folder")
 
 for rank in range(reader.GM.total_ranks):
     LM = reader.LMs[rank]
