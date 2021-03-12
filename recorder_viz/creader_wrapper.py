@@ -95,6 +95,7 @@ class RecorderReader:
 
             local_records  = libreader.read_records(self.str2char_p(logs_dir+"/"+str(rank)+".itf"), LM.total_records, pointer(self.GM))
             libreader.decompress_records(local_records, LM.total_records)
+            libreader.sort_records_by_tstart(local_records, LM.total_records)
 
             self.records.append(local_records)
 
