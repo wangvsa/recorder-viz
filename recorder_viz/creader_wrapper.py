@@ -3,46 +3,46 @@
 from ctypes import *
 import os, glob
 
-class LocalMetadata(Structure):
+class RecorderMetadata(Structure):
     _fields_ = [
-            ("start_timestamp", c_double),
-            ("end_timestamp", c_double),
-            ("num_files", c_int),
-            ("total_records", c_int),
-            ("filemap", POINTER(c_char_p)),
-            ("file_sizes", POINTER(c_size_t)),
-            ("function_count", c_int*256),
-    ]
-
-    # In Python3, self.filemap[i] is 'bytes' type
-    # For compatable reason, we convert it to str type
-    # and will only use self.filenames[i] to access the filename
-    def filemap_to_strs(self):
-        self.filenames = [''] * self.num_files
-        for i in range(self.num_files):
-            if type(self.filemap[i]) != str:
-                self.filenames[i] = self.filemap[i].decode('utf-8')
-            else:
-                self.filenames[i] = self.filemap[i]
-
-class GlobalMetadata(Structure):
-    _fields_ = [
-            ("time_resolution", c_double),
             ("total_ranks", c_int),
-            ("compression_mode", c_int),
-            ("peephole_window_size", c_int),
+            ("start_ts", c_double),
+            ("time_resolution", c_double),
+            ("ts_buffer_elements", c_int),
+            ("ts_compression_algo", c_int),
     ]
 
+class LocalMetadata():
+    def __init__(self, func_list, records, total_records):
+        self.total_records = total_records
+        self.num_files =0
+        self.filemap = set()
+        self.function_count = [0] * 256
 
-class Record(Structure):
+        for idx in range(total_records):
+            r = records[idx]
+            func = func_list[r.func_id]
+            self.function_count[r.func_id] += 1
+
+            if "MPI" in func or "H5" in func: continue
+
+            if "dir" in func: continue
+            if "open" in func or "close" in func or "creat" in func:
+                self.filemap.add( r.args[0] )
+
+        self.num_files = len(self.filemap)
+
+
+class PyRecord(Structure):
+    # The fields must be identical as PyRecord in reader.h
     _fields_ = [
-            ("status", c_char),
-            ("tstart", c_double),
-            ("tend", c_double),
-            ("func_id", c_ubyte),
-            ("arg_count", c_int),
-            ("args", POINTER(c_char_p)),    # Note in python3, args[i] is 'bytes' type
-            ("res", c_int),
+            ("tstart",    c_double),
+            ("tend",      c_double),
+            ("level",     c_ubyte),
+            ("func_id",   c_ubyte),
+            ("tid",       c_int),
+            ("arg_count", c_ubyte),
+            ("args",      POINTER(c_char_p)),    # Note in python3, args[i] is 'bytes' type
     ]
 
     # In Python3, self.args[i] is 'bytes' type
@@ -68,7 +68,7 @@ class RecorderReader:
 
     def __init__(self, logs_dir):
         current_dir = os.path.abspath(os.path.dirname(__file__))
-        search_path = os.path.abspath(os.path.join(current_dir, 'librreader*.so'))
+        search_path = os.path.abspath(os.path.join(current_dir, 'libreader*.so'))
 
         libreader_path = ''
         found = glob.glob(search_path)
@@ -76,35 +76,33 @@ class RecorderReader:
             libreader_path = found[0]
 
         libreader = cdll.LoadLibrary(libreader_path)
-        libreader.read_records.restype = POINTER(Record)
+        libreader.read_all_records.restype = POINTER(POINTER(PyRecord))
 
-        self.GM = GlobalMetadata()
-        self.LMs = []
-        self.records = []
+        self.GM = RecorderMetadata()
+        libreader.read_metadata(self.str2char_p(logs_dir + "/recorder.mt"), pointer(self.GM))
 
-        libreader.read_global_metadata(self.str2char_p(logs_dir + "/recorder.mt"), pointer(self.GM))
+
+        SizeArray = c_size_t * self.GM.total_ranks
+        counts = SizeArray()
+        self.records = libreader.read_all_records(self.str2char_p(logs_dir), counts)
+
         self.load_func_list(logs_dir + "/recorder.mt")
 
+        self.LMs = []
         for rank in range(self.GM.total_ranks):
-            print("[recorder-utils] Read trace file for rank: " + str(rank))
-            LM = LocalMetadata()
-            libreader.read_local_metadata(self.str2char_p(logs_dir+"/"+str(rank)+".mt"), pointer(LM))
-            LM.filemap_to_strs()
+            LM = LocalMetadata(self.funcs, self.records[rank], counts[rank])
             self.LMs.append(LM)
-
-            local_records  = libreader.read_records(self.str2char_p(logs_dir+"/"+str(rank)+".itf"), pointer(LM), pointer(self.GM))
-            libreader.decompress_records(local_records, LM.total_records)
-            libreader.sort_records_by_tstart(local_records, LM.total_records)
-
-            self.records.append(local_records)
-
+            print("Rank: %d, calls: %d, files: %d" %(rank, counts[rank], LM.num_files))
 
     def load_func_list(self, global_metadata_path):
         with open(global_metadata_path, 'rb') as f:
-            f.seek(24, 0)
+            f.seek(32, 0)
             self.funcs = f.read().splitlines()
-            self.funcs = [func.decode('utf-8').replace("PMPI", "MPI") for func in self.funcs]
+            self.funcs = [func.decode('utf-8') for func in self.funcs]
 
-#if __name__ == "__main__":
-#    import sys
-#    reader = RecorderReader(sys.argv[1])
+
+'''
+if __name__ == "__main__":
+    import sys
+    reader = RecorderReader(sys.argv[1])
+'''

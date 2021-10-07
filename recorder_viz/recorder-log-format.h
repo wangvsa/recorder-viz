@@ -45,6 +45,8 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <string.h>
+#include <uthash.h>
+#include <pthread.h>
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
@@ -72,40 +74,53 @@
 #endif
 #endif
 
+
 /* For each function call in the trace file */
 typedef struct Record_t {
-    char status;                // peephole compressed or not
     double tstart, tend;
+    unsigned char level;
     unsigned char func_id;      // we have about 200 functions in total
-    int arg_count;
+    unsigned char arg_count;
     char **args;                // Store all arguments in array
-    int res;                    // result returned from the original function call
+    pthread_t tid;
+
+    void* record_stack;         // per-thread record stack of cascading calls
+    struct Record_t *prev, *next;
 } Record;
 
 
-// Compression method, use peephole compression by default
-enum CompressionMode_t { COMP_TEXT=0, COMP_BINARY=1, COMP_RECORDER=2, COMP_ZLIB=3 };
-typedef enum CompressionMode_t CompressionMode;
+
+typedef struct RecordHash_t {
+    void *key;
+    int key_len;
+    int rank;
+    int terminal_id;
+    int count;
+    UT_hash_handle hh;
+} RecordHash;
 
 
-typedef struct RecorderGlobalDef_t {
+#define TS_COMPRESSION_NO   0
+#define TS_COMPRESSION_ZLIB 1
+#define TS_COMPRESSION_ZFP  2
+
+#define RECORDER_USER_FUNCTION 255
+
+
+#define RECORDER_POSIX      0
+#define RECORDER_MPIIO      1
+#define RECORDER_MPI        2
+#define RECORDER_HDF5       3
+#define RECORDER_FTRACE     4
+
+
+typedef struct RecorderMetadata_t {
+    int    total_ranks;
+    double start_ts;
     double time_resolution;
-    int total_ranks;
-    CompressionMode compression_mode;
-    int peephole_window_size;
-} RecorderGlobalDef;
-
-
-typedef struct RecorderLocalDef_t {
-    double start_timestamp;
-    double end_timestamp;
-    int num_files;                  // number of files accessed by the rank
-    int total_records;              // total number of records we have written
-    char **filemap;                 // mapping of filenames and integer ids. only set when read the local def file
-    size_t *file_sizes;             // size of each file accessed. only set when read back the local def file
-    int function_count[256];        // counting the functions at runtime
-} RecorderLocalDef;
-
+    int    ts_buffer_elements;
+    int    ts_compression_algo; // timestamp compression algorithm
+} RecorderMetadata;
 
 
 static const char* func_list[] = {
@@ -199,106 +214,6 @@ static const char* func_list[] = {
     "H5Oget_info_by_name",  "H5Oopen",
     "H5Pset_coll_metadata_write",                   "H5Pget_coll_metadata_write",   // collective metadata
     "H5Pset_all_coll_metadata_ops",                 "H5Pget_all_coll_metadata_ops"
-};
-
-
-/*
- * Position of the filename(fd, stream) arugment in the arguments list for each function
- * Used to convert from binary encoding to text format
- * The function index here should be the same as func_list above
- * e.g, for renmae, it's 0b00000011, which means the first and second arguments are filenames
- * 0b00000000 means no filename argument, e.g. umask()
- *
- */
-static char filename_arg_pos[] = {
-    // POSIX - 72 functions
-    0b00000001,  0b00000001,  0b00000001,  0b00000001,  0b00000001,
-    0b00000001,  0b00000001,  0b00000001,  0b00000001,  0b00000001,
-    0b00000001,  0b00000001,  0b00000001,  0b00000001,  0b00000001,
-    0b00010000,  0b00010000,  0b00000001,  0b00000001,  0b00000001,
-    0b00001000,  0b00001000,  0b00000001,  0b00000001,  0b00000001,
-    0b00000001,  0b00000010,  0b00000010,  0b00000010,  0b00000010,
-    0b00000010,  0b00000010,  0b00000000,  0b00000001,  0b00000001, // rmdir
-    0b00000001,  0b00000011,  0b00001111,  0b00000001,  0b00000011, // symlink
-    0b00000111,  0b00000001,  0b00000011,  0b00000011,  0b00000001, // chmod
-    0b00000001,  0b00000001,  0b00000001,  0b00000001,  0b00000001, // readdir
-    0b00000001,  0b00000001,  0b00000001,  0b00000011,  0b00000001, // fcntl
-    0b00000001,  0b00000011,  0b00000000,  0b00000001,  0b00000000, // umask
-    0b00000001,  0b00000001,  0b00000001,  0b00000011,  0b00000000, // tmpfile
-    0b00000001,  0b00000001,  0b00000001,  0b00000001,  0b00000000, // remove
-    0b00000001,  0b00000001,
-
-    // MPI 87 functions
-    // Only MPI_File_open has the filename argument
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000010,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,
-    // Added 2019/01/07
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,
-    // Added 2020/02/24
-    0b00000000,  0b00000000,  0b00000000,
-    // Added 2020/08/06
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,
-    // Added 2020/08/17
-    0b00000000,  0b00000000,  0b00000000,
-    // Added 2020/11/05, 2020/11/13
-    0b00000000,  0b00000000,
-    // Added 2020/12/18
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,
-    // Added 2020/01/25
-    0b00000000,  0b00000000,  0b00000000,
-
-
-    // HDF5 I/O - 74 functions
-    // Only H5Fcreate and H5Fopen have filename arguments
-    0b00000001,  0b00000001,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000, 0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
-    0b00000000,  0b00000000,  0b00000000,
 };
 
 #endif /* __RECORDER_LOG_FORMAT_H */

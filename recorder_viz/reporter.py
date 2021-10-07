@@ -12,6 +12,10 @@ from .creader_wrapper import RecorderReader
 from .html_writer import HTMLWriter
 from .build_offset_intervals import ignore_files
 from .build_offset_intervals import build_offset_intervals
+#from creader_wrapper import RecorderReader
+#from html_writer import HTMLWriter
+#from build_offset_intervals import ignore_files
+#from build_offset_intervals import build_offset_intervals
 
 
 # 0.0
@@ -30,8 +34,7 @@ def file_counts(reader, htmlWriter):
     y = []
     for LM in reader.LMs:
         num = 0
-        for i in range(LM.num_files):
-            filename = LM.filenames[i]
+        for filename in LM.filemap:
             if not ignore_files(filename):
                 num += 1
         y.append(num)
@@ -190,6 +193,8 @@ def overall_io_activities(reader, htmlWriter):
             record = reader.records[rank][i]
             funcname = func_list[record.func_id]
             if "MPI" in funcname or "H5" in funcname: continue
+            if "dir" in funcname: continue
+
             if "write" in funcname or "fprintf" in funcname:
                 x_write.append(record.tstart)
                 x_write.append(record.tend)
@@ -424,4 +429,5 @@ def generate_report(reader, output_path):
 
 if __name__ == "__main__":
     import sys
-    generate_report(sys.argv[1])
+    reader = RecorderReader(sys.argv[1])
+    generate_report(reader, sys.argv[2])

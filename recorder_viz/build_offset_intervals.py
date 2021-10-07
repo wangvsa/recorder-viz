@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # encoding: utf-8
-def handle_data_operations(record, fileMap, offsetBook, func_list, endOfFile):
+def handle_data_operations(record, offsetBook, func_list, endOfFile):
 
-    def update_end_of_file(rank, fd, filename, endOfFile, offsetBook):
-        if filename in endOfFile and fd in offsetBook:
-            endOfFile[filename][rank] = max(endOfFile[filename][rank], offsetBook[fd][rank])
+    def update_end_of_file(rank, filename, endOfFile, offsetBook):
+        if filename in endOfFile and filename in offsetBook:
+            endOfFile[filename][rank] = max(endOfFile[filename][rank], offsetBook[filename][rank])
         elif filename not in endOfFile:
             endOfFile[filename] = [0] * len(offsetBook[0])
-            endOfFile[filename][rank] = offsetBook[fd][rank]
+            endOfFile[filename][rank] = offsetBook[filename][rank]
         else:
-            print("Not possible: ", rank, fd, filename)
+            print("Not possible: ", rank, filename)
             endOfFile[filename][rank] = 0
 
     func = func_list[record.func_id]
@@ -22,48 +22,33 @@ def handle_data_operations(record, fileMap, offsetBook, func_list, endOfFile):
         return filename, offset, count
 
     if "writev" in func or "readv" in func:
-        fd, count = int(args[0]), int(args[1])
-        if(fd not in fileMap): return "", -1, -1
-        filename = fileMap[fd]
-
-        offset = offsetBook[fd][rank]
-        offsetBook[fd][rank] += count
-        update_end_of_file(rank, fd, filename, endOfFile, offsetBook)
+        filename, count = args[0], int(args[1])
+        offset = offsetBook[filename][rank]
+        offsetBook[filename][rank] += count
+        update_end_of_file(rank, filename, endOfFile, offsetBook)
     elif "fwrite" in func or "fread" in func:
-        fd, size, count = int(args[3]), int(args[1]), int(args[2])
-        if(fd not in fileMap): return "", -1, -1
-        filename = fileMap[fd]
-
-        offset, count = offsetBook[fd][rank], size*count
-        offsetBook[fd][rank] += count
-        update_end_of_file(rank, fd, filename, endOfFile, offsetBook)
+        filename, size, count = args[3], int(args[1]), int(args[2])
+        offset, count = offsetBook[filename][rank], size*count
+        offsetBook[filename][rank] += count
+        update_end_of_file(rank, filename, endOfFile, offsetBook)
     elif "pwrite" in func or "pread" in func:
-        fd, count, offset = int(args[0]), int(args[2]), int(args[3])
-        if(fd not in fileMap): return "", -1, -1
-        filename = fileMap[fd]
-
-        update_end_of_file(rank, fd, filename, endOfFile, offsetBook)
+        filename, count, offset = args[0], int(args[2]), int(args[3])
+        update_end_of_file(rank, filename, endOfFile, offsetBook)
     elif "write" in func or "read" in func:
-        fd, count = int(args[0]), int(args[2])
-        if(fd not in fileMap): return "", -1, -1
-        filename = fileMap[fd]
-
-        offset = offsetBook[fd][rank]
-        offsetBook[fd][rank] += count
-        update_end_of_file(rank, fd, filename, endOfFile, offsetBook)
+        filename, count = args[0], int(args[2])
+        offset = offsetBook[filename][rank]
+        offsetBook[filename][rank] += count
+        update_end_of_file(rank, filename, endOfFile, offsetBook)
     elif "fprintf" in func:
-        fd, count = int(args[0]), int(args[1])
-        if(fd not in fileMap): return "", -1, -1
-        filename = fileMap[fd]
-
-        offset = offsetBook[fd][rank]
-        offsetBook[fd][rank] += count
-        update_end_of_file(rank, fd, filename, endOfFile, offsetBook)
+        filename, count = args[0], int(args[1])
+        offset = offsetBook[filename][rank]
+        offsetBook[filename][rank] += count
+        update_end_of_file(rank, filename, endOfFile, offsetBook)
 
     return filename, offset, count
 
 
-def handle_metadata_operations(record, fileMap, offsetBook, func_list, closeBook, segmentBook, endOfFile):
+def handle_metadata_operations(record, offsetBook, func_list, closeBook, segmentBook, endOfFile):
 
     def get_latest_offset(filename, rank, closeBook, endOfFile):
         # Every filename should be in endOfFile becuase we initialized it at the begining
@@ -91,48 +76,32 @@ def handle_metadata_operations(record, fileMap, offsetBook, func_list, closeBook
         return
 
     if "fopen" in func or "fdopen" in func:
-        fd = record.res
-        if "fdopen" in func:
-            oldFd = int(args[0])
-            if oldFd not in fileMap:        # openning some file that we do not know?
-                return
-            else:
-                filename = fileMap[oldFd]
-        else:
-            filename = args[0]
-        fileMap[fd] = filename
-        offsetBook[fd][rank] = 0
+        # TODO check fdopen
+        filename = args[0]
+        offsetBook[filename][rank] = 0
         openMode = args[1]
         if 'a' in openMode:
-            offsetBook[fd][rank] = get_latest_offset(filename, rank, closeBook, endOfFile)
+            offsetBook[filename][rank] = get_latest_offset(filename, rank, closeBook, endOfFile)
         create_new_segment(filename, rank, segmentBook)
     elif "open" in func:
-        fd = record.res
         filename = args[0]
-        fileMap[fd] = filename
-        offsetBook[fd][rank] = 0
+        offsetBook[filename][rank] = 0
         openMode = int( args[1] )
         if openMode == 2:  # TODO need  a better way to test for O_APPEND
-            offsetBook[fd][rank] = get_latest_offset(filename, rank, closeBook, endOfFile)
+            offsetBook[filename][rank] = get_latest_offset(filename, rank, closeBook, endOfFile)
         create_new_segment(filename, rank, segmentBook)
     elif "seek" in func:
-        fd, offset, whence = int(args[0]), int(args[1]), int(args[2])
-        if fd not in fileMap: return
-        filename = fileMap[fd]
+        filename, offset, whence = args[0], int(args[1]), int(args[2])
 
         if whence == 0:     # SEEK_SET
-            offsetBook[fd][rank] = offset
+            offsetBook[filename][rank] = offset
         elif whence == 1:   # SEEK_CUR
-            offsetBook[fd][rank] += offset
+            offsetBook[filename][rank] += offset
         elif whence == 2:   # SEEK_END
-            offsetBook[fd][rank] = get_latest_offset(filename, rank, closeBook, endOfFile)
+            offsetBook[filename][rank] = get_latest_offset(filename, rank, closeBook, endOfFile)
 
     elif "close" in func or "sync" in func:
-        fd = int(args[0])
-        if(fd not in fileMap): return
-        filename = fileMap[fd]
-        if "close" in func: del fileMap[fd]
-
+        filename = args[0]
         closeBook[filename] = endOfFile[filename][rank]
 
         # 1. Close all segments on the local process for this file
@@ -195,13 +164,6 @@ def build_offset_intervals(reader):
 
     records = sorted(records, key=lambda x: x.tstart)
 
-    # Initialize offset book, each rank maintains its own offset book
-    fdSet = set([0, 1, 2])  # stdin, stderr, stdout
-    for record in records:
-        fdSet.add(record.res)
-    for fd in fdSet:
-        offsetBook[fd] = [0] * ranks
-
     segmentBook["stdin"] = []
     segmentBook["stderr"] = []
     segmentBook["stdout"] = []
@@ -211,25 +173,20 @@ def build_offset_intervals(reader):
 
     for rank in range(ranks):
         LM = reader.LMs[rank]
-        for i in range(LM.num_files):
-            filename = LM.filenames[i].replace(" ", "_")
+        for filename in LM.filemap:
             segmentBook[filename] = []
             endOfFile[filename] = [0] * ranks
-
-    fileMaps = []
-    for i in range(ranks):
-        fileMaps.append({0: "stdin", 1: "stdout", 2: "stderr"})
+            offsetBook[filename] = [0] * ranks
 
 
     for record in records:
 
         rank = record.rank
-        fileMap = fileMaps[rank]
 
         func = func_list[record.func_id]
 
-        handle_metadata_operations(record, fileMap, offsetBook, func_list, closeBook, segmentBook, endOfFile)
-        filename, offset, count = handle_data_operations(record, fileMap, offsetBook, func_list, endOfFile)
+        handle_metadata_operations(record, offsetBook, func_list, closeBook, segmentBook, endOfFile)
+        filename, offset, count = handle_data_operations(record, offsetBook, func_list, endOfFile)
 
         if not ignore_files(filename):
             isRead = "read" in func
