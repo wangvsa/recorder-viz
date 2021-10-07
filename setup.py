@@ -1,7 +1,7 @@
 import setuptools
 from setuptools.command.build_ext import build_ext
 
-c_reader_module = setuptools.Extension('recorder_viz/librreader',
+c_reader_module = setuptools.Extension('recorder_viz/libreader',
                                         ['recorder_viz/reader.c'], include_dirs=['recorder_viz'])
 
 class my_build_ext(build_ext):
@@ -24,7 +24,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="recorder-viz",                # Package name, e.g., pip install recorder-viz
-    version="0.2.8",
+    version="0.2.9",
     author="Chen Wang",
     author_email="wangvsa@gmail.com",
     description="Utilities for processing Recorder traces",
