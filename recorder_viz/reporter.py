@@ -8,14 +8,14 @@ from bokeh.embed import components
 from bokeh.models import FixedTicker, ColumnDataSource, LabelSet
 from prettytable import PrettyTable
 
-from .creader_wrapper import RecorderReader
-from .html_writer import HTMLWriter
-from .build_offset_intervals import ignore_files
-from .build_offset_intervals import build_offset_intervals
-#from creader_wrapper import RecorderReader
-#from html_writer import HTMLWriter
-#from build_offset_intervals import ignore_files
-#from build_offset_intervals import build_offset_intervals
+#from .creader_wrapper import RecorderReader
+#from .html_writer import HTMLWriter
+#from .build_offset_intervals import ignore_files
+#from .build_offset_intervals import build_offset_intervals
+from creader_wrapper import RecorderReader
+from html_writer import HTMLWriter
+from build_offset_intervals import ignore_files
+from build_offset_intervals import build_offset_intervals
 
 
 # 0.0
@@ -157,13 +157,17 @@ def function_times(reader, htmlWriter):
         records = reader.records[rank]
         for i in range(reader.LMs[rank].total_records):
             record = records[i]
+
+            # ignore user functions
+            if record.func_id >= len(func_list): continue
+
             aggregate[record.func_id] += (record.tend - record.tstart)
 
     funcnames, times = np.array([]), np.array([])
 
     for i in range(len(aggregate)):
         if aggregate[i] > 0:
-            funcnames = np.append(funcnames, func_list[i].replace("PMPI", "MPI"))
+            funcnames = np.append(funcnames, func_list[i])
             times = np.append(times, aggregate[i])
 
     index = np.argsort(times)[::-1]
@@ -191,6 +195,10 @@ def overall_io_activities(reader, htmlWriter):
 
         for i in range(reader.LMs[rank].total_records):
             record = reader.records[rank][i]
+
+            # ignore user functions
+            if record.func_id >= len(func_list): continue
+
             funcname = func_list[record.func_id]
             if "MPI" in funcname or "H5" in funcname: continue
             if "dir" in funcname: continue

@@ -21,13 +21,17 @@ class LocalMetadata():
 
         for idx in range(total_records):
             r = records[idx]
-            func = func_list[r.func_id]
-            self.function_count[r.func_id] += 1
+
+            # Ignore user functions for now
+            if r.func_id < len(func_list):
+                func = func_list[r.func_id]
+                self.function_count[r.func_id] += 1
 
             if "MPI" in func or "H5" in func: continue
 
             if "dir" in func: continue
-            if "open" in func or "close" in func or "creat" in func:
+            if "open" in func or "close" in func or "creat" in func \
+                or "seek" in func or "sync" in func:
                 self.filemap.add( r.args[0] )
 
         self.num_files = len(self.filemap)

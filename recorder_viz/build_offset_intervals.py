@@ -159,6 +159,10 @@ def build_offset_intervals(reader):
         for i in range(reader.LMs[rank].total_records):
             record = reader.records[rank][i]
             record.rank = rank
+
+            # ignore user functions
+            if record.func_id >= len(func_list): continue
+
             if not ignore_funcs(func_list[record.func_id]):
                 records.append( record )
 
@@ -182,7 +186,6 @@ def build_offset_intervals(reader):
     for record in records:
 
         rank = record.rank
-
         func = func_list[record.func_id]
 
         handle_metadata_operations(record, offsetBook, func_list, closeBook, segmentBook, endOfFile)
