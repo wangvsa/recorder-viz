@@ -32,7 +32,8 @@ class LocalMetadata():
             if "dir" in func: continue
             if "open" in func or "close" in func or "creat" in func \
                 or "seek" in func or "sync" in func:
-                self.filemap.add( r.args[0] )
+                fstr = r.args[0]
+                self.filemap.add(fstr if type(fstr)==str else fstr.decode('utf-8'))
 
         self.num_files = len(self.filemap)
 
@@ -96,7 +97,7 @@ class RecorderReader:
         for rank in range(self.GM.total_ranks):
             LM = LocalMetadata(self.funcs, self.records[rank], counts[rank])
             self.LMs.append(LM)
-            print("Rank: %d, calls: %d, files: %d" %(rank, counts[rank], LM.num_files))
+            print("Rank: %d, intercepted calls: %d, accessed files: %d" %(rank, counts[rank], LM.num_files))
 
     def load_func_list(self, global_metadata_path):
         with open(global_metadata_path, 'rb') as f:

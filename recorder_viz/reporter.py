@@ -8,14 +8,16 @@ from bokeh.embed import components
 from bokeh.models import FixedTicker, ColumnDataSource, LabelSet
 from prettytable import PrettyTable
 
-#from .creader_wrapper import RecorderReader
-#from .html_writer import HTMLWriter
-#from .build_offset_intervals import ignore_files
-#from .build_offset_intervals import build_offset_intervals
+from .creader_wrapper import RecorderReader
+from .html_writer import HTMLWriter
+from .build_offset_intervals import ignore_files
+from .build_offset_intervals import build_offset_intervals
+'''
 from creader_wrapper import RecorderReader
 from html_writer import HTMLWriter
 from build_offset_intervals import ignore_files
 from build_offset_intervals import build_offset_intervals
+'''
 
 
 # 0.0
@@ -116,9 +118,9 @@ def function_patterns(all_intervals, htmlWriter):
             else:
                 x['random'] += 1
         total = x['consecutive'] + x['sequential'] + x['random']
-    print("consecutive:",  x['consecutive'] )
-    print("sequential:",  x['sequential'] )
-    print("random:",  x['random'])
+    #print("consecutive:",  x['consecutive'] )
+    #print("sequential:",  x['sequential'] )
+    #print("random:",  x['random'])
 
     script, div = components(pie_chart(x))
     htmlWriter.functionPatterns = script+div
@@ -386,6 +388,7 @@ def io_sizes(intervals, htmlWriter, read=True):
             if io_size not in sizes: sizes[io_size] = 0
             sizes[io_size] += 1
 
+
     xs = sorted(sizes.keys())
     ys = [ sizes[x] for x in xs ]
     xs = [ str(x) for x in xs ]
@@ -403,6 +406,65 @@ def io_sizes(intervals, htmlWriter, read=True):
         htmlWriter.readIOSizes = div + script
     else:
         htmlWriter.writeIOSizes = div + script
+
+# 4.1
+def io_statistics(reader, intervals, htmlWriter):
+    sum_write_size = {}
+    sum_write_time = {}
+    sum_read_size = {}
+    sum_read_time = {}
+    sum_meta_time = {}
+
+    for filename in intervals:
+        if ignore_files(filename): continue
+
+        sum_write_size[filename] = 0
+        sum_write_time[filename] = 0
+        sum_read_size[filename]  = 0
+        sum_read_time[filename]  = 0
+        sum_meta_time[filename]  = 0
+
+        for interval in intervals[filename]:
+            io_size , is_read = interval[4], interval[5]
+            duration = float(interval[2]) - float(interval[1])
+
+            if is_read:
+                sum_write_size[filename] += io_size
+                sum_write_time[filename] += duration
+            else:
+                sum_read_size[filename]  += io_size
+                sum_read_time[filename]  += duration
+
+    for rank in range(reader.GM.total_ranks):
+        records = reader.records[rank]
+
+        # ignore user functions
+
+        for i in range(reader.LMs[rank].total_records):
+            record = records[i]
+
+            if record.func_id >= len(reader.funcs): continue
+            func = reader.funcs[record.func_id]
+
+            if "dir" in func or "MPI" in func or "H5" in func: continue
+            if "open" in func or "close" in func or "sync" in func or "seek" in func:
+                filename = record.args[0]
+                if filename in sum_write_size.keys():
+                    sum_meta_time[filename] += record.tend - record.tstart
+
+
+    table = PrettyTable()
+    table.field_names = ['Filename', 'Bytes written', 'Write time (s)', 'Write Bandwidth (MB/s)', \
+                         'Bytes read', 'Read time (s)', 'Read Bandwidth (MB/s)', 'Metadata time (s)']
+    for filename in sum_write_size:
+        print("File: %s" %filename)
+        write_bw = 0 if sum_write_size[filename] == 0 else sum_write_size[filename]/sum_write_time[filename]/(1024*1024)
+        read_bw  = 0 if sum_read_size[filename] == 0 else sum_read_size[filename]/sum_read_time[filename]/(1024*1024)
+
+        table.add_row([filename, sum_write_size[filename], sum_write_time[filename], write_bw,
+                                sum_read_size[filename], sum_read_time[filename], read_bw, sum_meta_time[filename]])
+
+    htmlWriter.perFileIOStatistics = table.get_html_string()
 
 
 def generate_report(reader, output_path):
@@ -430,10 +492,12 @@ def generate_report(reader, output_path):
 
     file_access_patterns(intervals, htmlWriter)
 
+    io_statistics(reader, intervals, htmlWriter)
     io_sizes(intervals, htmlWriter, read=True)
     io_sizes(intervals, htmlWriter, read=False)
 
     htmlWriter.write_html()
+
 
 if __name__ == "__main__":
     import sys

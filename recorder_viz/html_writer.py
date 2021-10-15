@@ -122,14 +122,18 @@ class HTMLWriter:
                 </div>
                 <hr>
 
-                <h2> 4. Count of I/O access sizes </h2>
+                <h2> 4. I/O Statistics </h2>
                 <div>
+                    <h4> 4.1 Per-file I/O statistics</h4>
+                    %s
+
+                    <h4> 4.2 Count of unique I/O sizes</h4>
                     <div style="display:inline-block">
-                        <h4> 4.1 Read </h4>
+                        <h4> Read </h4>
                         %s
                     </div>
                     <div style="display:inline-block">
-                        <h4> 4.2 Write </h4>
+                        <h4> Write </h4>
                         %s
                     </div>
                 </div>
@@ -138,7 +142,7 @@ class HTMLWriter:
         """ %(self.get_html_head(), self.performanceTable, self.recordCount, self.fileCount, self.fileAccessModeTable, \
                 self.functionLayers, self.functionPatterns, self.functionCount, self.functionTimes, \
                 self.overallIOActivities, self.offsetVsRank, self.offsetVsTime, self.fileAccessPatterns, \
-                self.readIOSizes, self.writeIOSizes)
+                self.perFileIOStatistics, self.readIOSizes, self.writeIOSizes)
 
         f = open(self.filename, "w")
         f.write(html_content)

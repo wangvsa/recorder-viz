@@ -24,7 +24,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="recorder-viz",                # Package name, e.g., pip install recorder-viz
-    version="0.3.4",
+    version="0.3.8",
     author="Chen Wang",
     author_email="wangvsa@gmail.com",
     description="Utilities for processing Recorder traces",
