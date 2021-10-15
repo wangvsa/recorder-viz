@@ -457,13 +457,13 @@ def io_statistics(reader, intervals, htmlWriter):
     table.field_names = ['Filename', 'Bytes written', 'Write time (s)', 'Write Bandwidth (MB/s)', \
                          'Bytes read', 'Read time (s)', 'Read Bandwidth (MB/s)', 'Metadata time (s)']
     for filename in sum_write_size:
-        print("File: %s" %filename)
         write_bw = 0 if sum_write_size[filename] == 0 else sum_write_size[filename]/sum_write_time[filename]/(1024*1024)
         read_bw  = 0 if sum_read_size[filename] == 0 else sum_read_size[filename]/sum_read_time[filename]/(1024*1024)
 
         table.add_row([filename, sum_write_size[filename], sum_write_time[filename], write_bw,
                                 sum_read_size[filename], sum_read_time[filename], read_bw, sum_meta_time[filename]])
 
+    print(table)
     htmlWriter.perFileIOStatistics = table.get_html_string()
 
 
