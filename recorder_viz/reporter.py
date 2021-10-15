@@ -429,11 +429,11 @@ def io_statistics(reader, intervals, htmlWriter):
             duration = float(interval[2]) - float(interval[1])
 
             if is_read:
-                sum_write_size[filename] += io_size
-                sum_write_time[filename] += duration
-            else:
                 sum_read_size[filename]  += io_size
                 sum_read_time[filename]  += duration
+            else:
+                sum_write_size[filename] += io_size
+                sum_write_time[filename] += duration
 
     for rank in range(reader.GM.total_ranks):
         records = reader.records[rank]
