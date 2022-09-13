@@ -2,7 +2,7 @@ import setuptools
 from setuptools.command.build_ext import build_ext
 
 c_reader_module = setuptools.Extension('recorder_viz/libreader',
-                                        ['recorder_viz/reader.c'], include_dirs=['recorder_viz'])
+                                        ['recorder_viz/reader.c'], include_dirs=['recorder_viz'], extra_compile_args=['-std=C99'])
 
 class my_build_ext(build_ext):
     # The default implementation of this function adds some
