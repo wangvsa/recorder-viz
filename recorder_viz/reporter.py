@@ -8,6 +8,7 @@ from bokeh.embed import components
 from bokeh.models import FixedTicker, ColumnDataSource, LabelSet
 from prettytable import PrettyTable
 
+'''
 from .creader_wrapper import RecorderReader
 from .html_writer import HTMLWriter
 from .build_offset_intervals import ignore_files
@@ -17,7 +18,6 @@ from creader_wrapper import RecorderReader
 from html_writer import HTMLWriter
 from build_offset_intervals import ignore_files
 from build_offset_intervals import build_offset_intervals
-'''
 
 
 # 0.0
@@ -140,12 +140,14 @@ def function_counts(reader, htmlWriter):
 
     index = np.argsort(counts)[::-1]
     counts = counts[index]
+    # This converts float array to str array, a fix needed for python3/and latest bokeh
+    counts = [str(c) for c in counts]
     funcnames = funcnames[index]
 
     p = figure(x_axis_label="Count", x_axis_type="log", y_axis_label="Function", y_range=funcnames)
     p.hbar(y=funcnames, right=counts, height=0.8, left=1)
-    labels = LabelSet(x='x', y='y', text='x', level='glyph', x_offset=0, y_offset=-8, text_font_size="10pt",
-                source=ColumnDataSource(dict(x=counts, y=funcnames)), render_mode='canvas')
+    labels = LabelSet(x='x', y='y', text='z', x_offset=0, y_offset=-8, text_font_size="10pt",
+                source=ColumnDataSource(dict(x=counts, y=funcnames, z=counts)))
     p.add_layout(labels)
 
     script, div = components(p)
@@ -174,12 +176,13 @@ def function_times(reader, htmlWriter):
 
     index = np.argsort(times)[::-1]
     times = times[index]
+    times = [str(t) for t in times]
     funcnames = funcnames[index]
 
     p = figure(x_axis_label="Spent Time (Seconds)", y_axis_label="Function", y_range=funcnames)
     p.hbar(y=funcnames, right=times, height=0.8, left=0)
-    labels = LabelSet(x='x', y='y', text='x', level='glyph', x_offset=0, y_offset=-8, text_font_size="10pt",
-                source=ColumnDataSource(dict(x=times, y=funcnames)), render_mode='canvas')
+    labels = LabelSet(x='x', y='y', text='x', x_offset=0, y_offset=-8, text_font_size="10pt",
+                source=ColumnDataSource(dict(x=times, y=funcnames)))
     p.add_layout(labels)
 
     script, div = components(p)
@@ -390,15 +393,15 @@ def io_sizes(intervals, htmlWriter, read=True):
 
 
     xs = sorted(sizes.keys())
-    ys = [ sizes[x] for x in xs ]
+    ys = [ str(sizes[x]) for x in xs ]
     xs = [ str(x) for x in xs ]
 
     p = figure(x_range=xs, x_axis_label="IO Size", y_axis_label="Count", y_axis_type='log', plot_width=500 if not read else 400, plot_height=350)
     p.vbar(x=xs, top=ys, width=0.6, bottom=1)
     p.xaxis.major_label_orientation = math.pi/2
 
-    labels = LabelSet(x='x', y='y', text='y', level='glyph', x_offset=-10, y_offset=0, text_font_size="10pt",
-                source=ColumnDataSource(dict(x=xs ,y=ys)), render_mode='canvas')
+    labels = LabelSet(x='x', y='y', text='y', x_offset=-10, y_offset=0, text_font_size="10pt",
+                source=ColumnDataSource(dict(x=xs ,y=ys)))
     p.add_layout(labels)
 
     script, div = components(p)
