@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from ctypes import *
-import os, glob
+import os, glob, struct
 
 class RecorderMetadata(Structure):
     _fields_ = [
@@ -10,6 +10,7 @@ class RecorderMetadata(Structure):
             ("time_resolution", c_double),
             ("ts_buffer_elements", c_int),
             ("ts_compression_algo", c_int),
+            ("interprocess_compression", c_int),
     ]
 
 class LocalMetadata():
@@ -83,15 +84,14 @@ class RecorderReader:
         libreader = cdll.LoadLibrary(libreader_path)
         libreader.read_all_records.restype = POINTER(POINTER(PyRecord))
 
+        # Load function list, also return the total number of processes
+        nprocs = self.load_func_list(logs_dir + "/recorder.mt")
+
+        # This function also fills in self.GM
         self.GM = RecorderMetadata()
-        libreader.read_metadata(self.str2char_p(logs_dir + "/recorder.mt"), pointer(self.GM))
-
-
-        SizeArray = c_size_t * self.GM.total_ranks
+        SizeArray = c_size_t * nprocs
         counts = SizeArray()
-        self.records = libreader.read_all_records(self.str2char_p(logs_dir), counts)
-
-        self.load_func_list(logs_dir + "/recorder.mt")
+        self.records = libreader.read_all_records(self.str2char_p(logs_dir), counts, pointer(self.GM))
 
         self.LMs = []
         for rank in range(self.GM.total_ranks):
@@ -100,10 +100,13 @@ class RecorderReader:
             print("Rank: %d, intercepted calls: %d, accessed files: %d" %(rank, counts[rank], LM.num_files))
 
     def load_func_list(self, global_metadata_path):
+        nprocs = 0
         with open(global_metadata_path, 'rb') as f:
-            f.seek(32, 0)
+            nprocs = struct.unpack('i', f.read(4))[0]
+            f.seek(40, 0)   # skip the metadata header, e.g., total_ranks, etc.
             self.funcs = f.read().splitlines()
             self.funcs = [func.decode('utf-8') for func in self.funcs]
+        return nprocs
 
 
 '''

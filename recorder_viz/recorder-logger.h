@@ -38,8 +38,8 @@
  * Prime Contract No. DE-AC02-05CH11231.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __RECORDER_LOG_FORMAT_H
-#define __RECORDER_LOG_FORMAT_H
+#ifndef __RECORDER_LOGGER_H
+#define __RECORDER_LOGGER_H
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -74,6 +74,20 @@
 #endif
 #endif
 
+#define TS_COMPRESSION_NO   0
+#define TS_COMPRESSION_ZLIB 1
+#define TS_COMPRESSION_ZFP  2
+
+#define RECORDER_USER_FUNCTION 255
+
+
+#define RECORDER_POSIX      0
+#define RECORDER_MPIIO      1
+#define RECORDER_MPI        2
+#define RECORDER_HDF5       3
+#define RECORDER_FTRACE     4
+
+
 
 /* For each function call in the trace file */
 typedef struct Record_t {
@@ -89,29 +103,17 @@ typedef struct Record_t {
 } Record;
 
 
-
-typedef struct RecordHash_t {
+/*
+ * Call Signature
+ */
+typedef struct CallSignature_t {
     void *key;
     int key_len;
     int rank;
     int terminal_id;
     int count;
     UT_hash_handle hh;
-} RecordHash;
-
-
-#define TS_COMPRESSION_NO   0
-#define TS_COMPRESSION_ZLIB 1
-#define TS_COMPRESSION_ZFP  2
-
-#define RECORDER_USER_FUNCTION 255
-
-
-#define RECORDER_POSIX      0
-#define RECORDER_MPIIO      1
-#define RECORDER_MPI        2
-#define RECORDER_HDF5       3
-#define RECORDER_FTRACE     4
+} CallSignature;
 
 
 typedef struct RecorderMetadata_t {
@@ -120,7 +122,13 @@ typedef struct RecorderMetadata_t {
     double time_resolution;
     int    ts_buffer_elements;
     int    ts_compression_algo; // timestamp compression algorithm
+	int    interprocess_compression;
 } RecorderMetadata;
+
+
+
+
+
 
 
 static const char* func_list[] = {
@@ -163,7 +171,7 @@ static const char* func_list[] = {
     "PMPI_Scan",                    "PMPI_Type_commit",         "PMPI_Type_contiguous",
     "PMPI_Type_extent",             "PMPI_Type_free",           "PMPI_Type_hindexed",
     "PMPI_Op_create",               "PMPI_Op_free",             "PMPI_Type_get_envelope",
-    "PMPI_Type_size",
+    "PMPI_Type_size",               "PMPI_Type_create_darray",
     // Added 2019/01/07
     "PMPI_Cart_rank",               "PMPI_Cart_create",         "PMPI_Cart_get",
     "PMPI_Cart_shift",              "PMPI_Wait",                "PMPI_Send",
@@ -216,4 +224,4 @@ static const char* func_list[] = {
     "H5Pset_all_coll_metadata_ops",                 "H5Pget_all_coll_metadata_ops"
 };
 
-#endif /* __RECORDER_LOG_FORMAT_H */
+#endif /* __RECORDER_LOGGER_H */

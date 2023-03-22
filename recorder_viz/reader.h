@@ -1,22 +1,23 @@
 #ifndef _RECORDER_READER_H_
 #define _RECORDER_READER_H_
 #include <stdbool.h>
-#include "recorder-log-format.h"
+#include "recorder-logger.h"
 
+// keep in sync with VERSION_STR in lib/recorder-logger.c
+// equal (major, minor) is needed for compatibility
+#define VERSION_MAJOR 		2
+#define VERSION_MINOR 		4
+#define VERSION_PATCH 		0
 
-#define POSIX_SEMANTICS 0
-#define COMMIT_SEMANTICS 1
-#define SESSION_SEMANTICS 2
+#define POSIX_SEMANTICS 	0
+#define COMMIT_SEMANTICS 	1
+#define SESSION_SEMANTICS	2
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-
-typedef struct RecorderReader_t {
-
-    RecorderMetadata metadata;
-
-    char func_list[256][64];
-    char logs_dir[1024];
-} RecorderReader;
 
 typedef struct Interval_t {
     int rank;
@@ -41,27 +42,16 @@ typedef struct IntervalsMap_t {
     double **tcommits;
 } IntervalsMap;
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-typedef struct CallSignature_t {
-    int terminal;
-    int key_len;
-    char* key;
-} CallSignature;
-
 typedef struct CST_t {
     int rank;
     int entries;
-    CallSignature *cst_list;
+    CallSignature *cs_list; // CallSignature is defined in recorder-logger.h
 } CST;
 
 typedef struct RuleHash_t {
     int rule_id;
-    int *rule_body;     // 2i+0: val of symbol i,  2i+1: exp of symbol i
-    int symbols;        // There are a total of 2*symbols integers in the rule body
+    int *rule_body;         // 2i+0: val of symbol i,  2i+1: exp of symbol i
+    int symbols;            // There are a total of 2*symbols integers in the rule body
     UT_hash_handle hh;
 } RuleHash;
 
@@ -70,6 +60,24 @@ typedef struct CFG_t {
     int rules;
     RuleHash* cfg_head;
 } CFG;
+
+typedef struct RecorderReader_t {
+
+    RecorderMetadata metadata;
+
+    char func_list[256][64];
+    char logs_dir[1024];
+
+    int mpi_start_idx;
+    int hdf5_start_idx;
+
+    double prev_tstart;
+
+	int   num_ugs;			// number of unique grammars
+	int*  ug_ids;			// index of unique grammar in cfgs
+	CST** csts;
+	CFG** cfgs;
+} RecorderReader;
 
 
 /**
@@ -86,14 +94,36 @@ typedef struct PyRecord_t {
 } PyRecord;
 
 
+
 void recorder_init_reader(const char* logs_dir, RecorderReader *reader);
 void recorder_free_reader(RecorderReader *reader);
 
-void recorder_read_cst(RecorderReader *reader, int rank, CST *cst);
-void recorder_free_cst(CST *cst);
 
-void recorder_read_cfg(RecorderReader *reader, int rank, CFG *cfg);
+/**
+ * Read CST and CFG from files to RecorderReader
+ *
+ * With interprocess compression, we have
+ * one merged CST and multiple CFG files.
+ * Each CFG file stores a unique grammar.
+ *
+ * Without interprocess compression, we have
+ * one CST and one CFG file per process.
+ *
+ * ! These two functions should only be used internally
+ * recorder_get_cst_cfg() can be used to perform
+ * custom tasks with CST and CFG
+ */
+void recorder_read_cst(RecorderReader *reader, int rank);
+void recorder_read_cfg(RecorderReader *reader, int rank);
+void recorder_free_cst(CST *cst);
 void recorder_free_cfg(CFG *cfg);
+
+void recorder_get_cst_cfg(RecorderReader* reader, int rank, CST** cst, CFG** cfg);
+
+
+Record* recorder_cs_to_record(CallSignature *cs);
+void recorder_free_record(Record* r);
+
 
 /**
  * This function reads all records of a rank
@@ -105,7 +135,13 @@ void recorder_free_cfg(CFG *cfg);
  * void* user_arg can be used to pass in user argument.
  *
  */
-void recorder_decode_records(RecorderReader* reader, CST *cst, CFG *cfg,
+void recorder_decode_records_core(RecorderReader* reader, CST *cst, CFG *cfg,
+                             void (*user_op)(Record* r, void* user_arg), void* user_arg, bool free_record);
+void recorder_decode_records(RecorderReader* reader, int rank,
+                             void (*user_op)(Record* r, void* user_arg), void* user_arg);
+
+
+void recorder_decode_records2(RecorderReader *reader, CST *cst, CFG *cfg,
                              void (*user_op)(Record* r, void* user_arg), void* user_arg);
 
 
@@ -122,8 +158,10 @@ const char* recorder_get_func_name(RecorderReader* reader, Record* record);
 int recorder_get_func_type(RecorderReader* reader, Record* record);
 
 
-IntervalsMap* build_offset_intervals(RecorderReader reader, int *num_files, int semantics);
+IntervalsMap* build_offset_intervals(RecorderReader *reader, int semantics, int *num_files);
+
 #ifdef __cplusplus
 }
 #endif
+
 #endif
