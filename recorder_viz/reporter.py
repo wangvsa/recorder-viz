@@ -29,8 +29,8 @@ def record_counts(reader, htmlWriter):
     y = []
     for LM in reader.LMs:
         y.append(LM.total_records)
-    x = range(reader.GM.total_ranks)
-    p = figure(x_axis_label="Rank", y_axis_label="Number of records", plot_width=400, plot_height=300)
+    x = list(range(reader.GM.total_ranks))
+    p = figure(x_axis_label="Rank", y_axis_label="Number of records", width=400, height=300)
     p.vbar(x=x, top=y, width=0.6)
     script, div = components(p)
     htmlWriter.recordCount = div+script
@@ -44,8 +44,8 @@ def file_counts(reader, htmlWriter):
             if not ignore_files(filename):
                 num += 1
         y.append(num)
-    x = range(reader.GM.total_ranks)
-    p = figure(x_axis_label="Rank", y_axis_label="Number of files accessed", plot_width=400, plot_height=300)
+    x = list(range(reader.GM.total_ranks))
+    p = figure(x_axis_label="Rank", y_axis_label="Number of files accessed", width=400, height=300)
     p.vbar(x=x, top=y, width=0.6)
     script, div = components(p)
     htmlWriter.fileCount = div+script
@@ -60,7 +60,7 @@ def pie_chart(x):
     data['color'] = Category20c[len(x)]
 
     from bokeh.transform import cumsum
-    p = figure(plot_height=300, plot_width=400)
+    p = figure(height=300, width=400)
     p.wedge(x=0, y=1, radius=0.4, start_angle=cumsum('angle', include_zero=True), end_angle=cumsum('angle'),
             line_color="white", fill_color='color', legend_field='layer', source=data)
 
@@ -230,7 +230,7 @@ def overall_io_activities(reader, htmlWriter):
         return x_read, x_write, y_read, y_write
 
 
-    p = figure(x_axis_label="Time", y_axis_label="Rank", plot_width=600, plot_height=400)
+    p = figure(x_axis_label="Time", y_axis_label="Rank", width=600, height=400)
     for rank in range(reader.GM.total_ranks):
         x_read, x_write, y_read, y_write = io_activity(rank)
         p.line(x_write, y_write, line_color='red', line_width=20, alpha=1.0, legend_label="write")
@@ -276,7 +276,7 @@ def offset_vs_rank(intervals, htmlWriter):
             idx += 1
 
     from bokeh.layouts import gridplot
-    script, div = components(gridplot(plots, ncols=3, plot_width=400, plot_height=300))
+    script, div = components(gridplot(plots, ncols=3, width=400, height=300))
     htmlWriter.offsetVsRank = script+div
 
 # 3.3
@@ -316,7 +316,7 @@ def offset_vs_time(intervals, htmlWriter):
             idx += 1
 
     from bokeh.layouts import gridplot
-    script, div = components(gridplot(plots, ncols=3, plot_width=400, plot_height=300))
+    script, div = components(gridplot(plots, ncols=3, width=400, height=300))
     htmlWriter.offsetVsTime = script+div
 
 # 3.4
@@ -400,7 +400,7 @@ def io_sizes(intervals, htmlWriter, read=True):
     ys = [ str(sizes[x]) for x in xs ]
     xs = [ str(x) for x in xs ]
 
-    p = figure(x_range=xs, x_axis_label="IO Size", y_axis_label="Count", y_axis_type='log', plot_width=500 if not read else 400, plot_height=350)
+    p = figure(x_range=xs, x_axis_label="IO Size", y_axis_label="Count", y_axis_type='log', width=500 if not read else 400, height=350)
     p.vbar(x=xs, top=ys, width=0.6, bottom=1)
     p.xaxis.major_label_orientation = math.pi/2
 
@@ -464,8 +464,12 @@ def io_statistics(reader, intervals, htmlWriter):
     table.field_names = ['Filename', 'Bytes written', 'Write time (s)', 'Write Bandwidth (MB/s)', \
                          'Bytes read', 'Read time (s)', 'Read Bandwidth (MB/s)', 'Metadata time (s)']
     for filename in sum_write_size:
-        write_bw = 0 if sum_write_size[filename] == 0 else sum_write_size[filename]/sum_write_time[filename]/(1024*1024)
-        read_bw  = 0 if sum_read_size[filename] == 0 else sum_read_size[filename]/sum_read_time[filename]/(1024*1024)
+        write_bw = 0
+        if sum_write_size[filename] != 0 and sum_write_size[filename] != 0:
+            write_bw = sum_write_size[filename]/sum_write_time[filename]/(1024*1024)
+        read_bw  = 0
+        if sum_read_size[filename] != 0 and sum_read_time[filename] != 0:
+            read_bw = sum_read_size[filename]/sum_read_time[filename]/(1024*1024)
 
         table.add_row([filename, sum_write_size[filename], sum_write_time[filename], write_bw,
                                 sum_read_size[filename], sum_read_time[filename], read_bw, sum_meta_time[filename]])

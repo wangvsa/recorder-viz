@@ -73,8 +73,13 @@ class RecorderReader:
         return c_char_p( s.encode('utf-8') )
 
     def __init__(self, logs_dir):
-        current_dir = os.path.abspath(os.path.dirname(__file__))
-        search_path = os.path.abspath(os.path.join(current_dir, 'libreader*.so'))
+        if "RECORDER_INSTALL_PATH" not in os.environ:
+            print("RECORDER_INSTALL_PATH environment variable is not set,
+                  Please set it to the path where you installed Recorder.")
+            exit(0);
+
+        recorder_install_path = os.environ("RECORDER_INSTALL_PATH")
+        search_path = os.path.abspath(os.path.join(recorder_install_path, '/lib/libreader*.so'))
 
         libreader_path = ''
         found = glob.glob(search_path)
