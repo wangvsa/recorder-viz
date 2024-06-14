@@ -3,31 +3,11 @@ recorder-viz
 
 This is a python package which contains tools for processing [Recorder](https://github.com/uiuc-hpc/Recorder) traces.
 
-Installation
+Installation and Visualization
 -------------
 
-`pip install recorder-viz`
-
-
-
-Visualization
---------------
-
-We relie on a few libraries for visualization. Please install them first.
-
-Dependencies: [pandas](https://pandas.pydata.org/), [bokeh](https://docs.bokeh.org/) and [prettytable](https://pypi.org/project/PrettyTable/).
-
-```python
-import recorder_viz
-from recorder_viz import RecorderReader
-
-reader = RecorderReader("path/to/Recorder-traces-folder")
-recorder_viz.generate_report(reader, "output.html")
-```
-
-The `generate_report` API will write out a HTML format visualization report.
-
-The visualization process can be slow for large traces. We recommend to use it only for small scale runs, e.g., < 128 ranks runs.
+`recorder-viz` relies on Recorder and a few python libraries to run.
+Please see the document [here](https://recorder.readthedocs.io/latest/postprocessing.html#post-processing-and-visualization).
 
 Below are some example graphs generated from the [FLASH](http://flash.uchicago.edu) traces.
 ![example graphs](https://raw.githubusercontent.com/wangvsa/recorder-viz/main/tests/showoff.jpg)
