@@ -80,7 +80,7 @@ class RecorderReader:
             print(msg)
             exit(0);
 
-        recorder_install_path = os.environ("RECORDER_INSTALL_PATH")
+        recorder_install_path = os.environ["RECORDER_INSTALL_PATH"]
         search_path = os.path.abspath(os.path.join(recorder_install_path, '/lib/libreader*.so'))
 
         libreader_path = ''
