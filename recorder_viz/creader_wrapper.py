@@ -78,15 +78,18 @@ class RecorderReader:
                 "    RECORDER_INSTALL_PATH environment variable is not set.\n" \
                 "    Please set it to the path where you installed Recorder."
             print(msg)
+            exit(1)
+
+        recorder_install_path = os.path.abspath(os.environ["RECORDER_INSTALL_PATH"])
+        libreader_path = recorder_install_path + "/lib/libreader.so"
+
+        if not os.path.isfile(libreader_path):
+            msg="Error:\n"\
+                "    Could not find Recorder reader library\n"\
+                "    Please make sure Recorder is installed at %s",\
+                recorder_install_path
+            print(msg)
             exit(0);
-
-        recorder_install_path = os.environ["RECORDER_INSTALL_PATH"]
-        search_path = os.path.abspath(os.path.join(recorder_install_path, '/lib/libreader*.so'))
-
-        libreader_path = ''
-        found = glob.glob(search_path)
-        if len(found) == 1:
-            libreader_path = found[0]
 
         libreader = cdll.LoadLibrary(libreader_path)
         libreader.read_all_records.restype = POINTER(POINTER(PyRecord))
