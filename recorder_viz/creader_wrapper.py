@@ -74,8 +74,10 @@ class RecorderReader:
 
     def __init__(self, logs_dir):
         if "RECORDER_INSTALL_PATH" not in os.environ:
-            print("RECORDER_INSTALL_PATH environment variable is not set,
-                  Please set it to the path where you installed Recorder.")
+            msg="Error:\n"\
+                "    RECORDER_INSTALL_PATH environment variable is not set.\n" \
+                "    Please set it to the path where you installed Recorder."
+            print(msg)
             exit(0);
 
         recorder_install_path = os.environ("RECORDER_INSTALL_PATH")
@@ -114,8 +116,6 @@ class RecorderReader:
         return nprocs
 
 
-'''
 if __name__ == "__main__":
     import sys
     reader = RecorderReader(sys.argv[1])
-'''
