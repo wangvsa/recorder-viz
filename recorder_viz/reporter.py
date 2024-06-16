@@ -465,7 +465,7 @@ def io_statistics(reader, intervals, htmlWriter):
                          'Bytes read', 'Read time (s)', 'Read Bandwidth (MB/s)', 'Metadata time (s)']
     for filename in sum_write_size:
         write_bw = 0
-        if sum_write_size[filename] != 0 and sum_write_size[filename] != 0:
+        if sum_write_size[filename] != 0 and sum_write_time[filename] != 0:
             write_bw = sum_write_size[filename]/sum_write_time[filename]/(1024*1024)
         read_bw  = 0
         if sum_read_size[filename] != 0 and sum_read_time[filename] != 0:
