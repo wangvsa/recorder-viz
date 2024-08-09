@@ -3,16 +3,39 @@
 from ctypes import *
 import os, glob, struct
 
+"""
+Global metadata information:
+    must match the struct RecorderMetadata in
+    include/recorder-logger.h
+"""
 class RecorderMetadata(Structure):
     _fields_ = [
             ("total_ranks", c_int),
+            ("posix_tracing", c_bool),
+            ("mpi_tracing", c_bool),
+            ("mpiio_tracing", c_bool),
+            ("hdf5_tracing", c_bool),
+            ("store_tid", c_bool),
+            ("store_call_depth", c_bool),
             ("start_ts", c_double),
             ("time_resolution", c_double),
             ("ts_buffer_elements", c_int),
-            ("ts_compression_algo", c_int),
-            ("interprocess_compression", c_int),
+            ("ts_compression", c_bool),
+            ("interprocess_compression", c_bool),
+            ("interprocess_pattern_recognition", c_bool),
+            ("intraprocess_pattern_recognition", c_bool),
     ]
 
+
+"""
+Per-rank metadata:
+    keeps total number of records,
+    number of files accessed, and
+    function counter.
+
+    This is a recorder-viz only calss
+    not used in C reader code.
+"""
 class LocalMetadata():
     def __init__(self, func_list, records, total_records):
         self.total_records = total_records
@@ -40,15 +63,15 @@ class LocalMetadata():
 
 
 class PyRecord(Structure):
-    # The fields must be identical as PyRecord in reader.h
+    # The fields must be identical as PyRecord in tools/reader.h
     _fields_ = [
-            ("tstart",    c_double),
-            ("tend",      c_double),
-            ("level",     c_ubyte),
-            ("func_id",   c_ubyte),
-            ("tid",       c_int),
-            ("arg_count", c_ubyte),
-            ("args",      POINTER(c_char_p)),    # Note in python3, args[i] is 'bytes' type
+            ("tstart",     c_double),
+            ("tend",       c_double),
+            ("call_depth", c_ubyte),
+            ("func_id",    c_ubyte),
+            ("tid",        c_int),
+            ("arg_count",  c_ubyte),
+            ("args",       POINTER(c_char_p)),    # Note in python3, args[i] is 'bytes' type
     ]
 
     # In Python3, self.args[i] is 'bytes' type
