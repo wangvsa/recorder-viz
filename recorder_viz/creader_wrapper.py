@@ -15,6 +15,8 @@ class RecorderMetadata(Structure):
             ("mpi_tracing", c_bool),
             ("mpiio_tracing", c_bool),
             ("hdf5_tracing", c_bool),
+            ("pnetcdf_tracing", c_bool),
+            ("netcdf_tracing", c_bool),
             ("store_tid", c_bool),
             ("store_call_depth", c_bool),
             ("start_ts", c_double),
@@ -41,7 +43,7 @@ class LocalMetadata():
         self.total_records = total_records
         self.num_files =0
         self.filemap = set()
-        self.function_count = [0] * 256
+        self.function_count = [0] * len(func_list)
 
         for idx in range(total_records):
             r = records[idx]
@@ -51,9 +53,11 @@ class LocalMetadata():
                 func = func_list[r.func_id]
                 self.function_count[r.func_id] += 1
 
-            if "MPI" in func or "H5" in func: continue
-
+            if func.startswith("MPI") or func.startswith("H5") or \
+               func.startswith("ncmpi") or func.startswith("nc_"):
+                continue
             if "dir" in func: continue
+
             if "open" in func or "close" in func or "creat" in func \
                 or "seek" in func or "sync" in func:
                 fstr = r.args[0]
@@ -68,7 +72,7 @@ class PyRecord(Structure):
             ("tstart",     c_double),
             ("tend",       c_double),
             ("call_depth", c_ubyte),
-            ("func_id",    c_ubyte),
+            ("func_id",    c_int),
             ("tid",        c_int),
             ("arg_count",  c_ubyte),
             ("args",       POINTER(c_char_p)),    # Note in python3, args[i] is 'bytes' type
@@ -120,10 +124,10 @@ class RecorderReader:
         # Load function list, also return the total number of processes
         nprocs = self.load_func_list(logs_dir + "/recorder.mt")
 
-        # This function also fills in self.GM
         self.GM = RecorderMetadata()
         SizeArray = c_size_t * nprocs
         counts = SizeArray()
+        # This function also fills in self.GM
         self.records = libreader.read_all_records(self.str2char_p(logs_dir), counts, pointer(self.GM))
 
         self.LMs = []
@@ -136,9 +140,10 @@ class RecorderReader:
         nprocs = 0
         with open(global_metadata_path, 'rb') as f:
             nprocs = struct.unpack('i', f.read(4))[0]
-            f.seek(40, 0)   # skip the metadata header, e.g., total_ranks, etc.
+            f.seek(1024, 0)   # skip the reserved metadata block (fixed 1024 bytes)
             self.funcs = f.read().splitlines()
             self.funcs = [func.decode('utf-8') for func in self.funcs]
+            #print(self.funcs)
         return nprocs
 
 
