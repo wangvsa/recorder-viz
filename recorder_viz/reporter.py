@@ -161,7 +161,7 @@ def function_counts(reader, htmlWriter):
 def function_times(reader, htmlWriter):
     func_list = reader.funcs
 
-    aggregate = np.zeros(256)
+    aggregate = np.zeros(2162)
     for rank in range(reader.GM.total_ranks):
         records = reader.records[rank]
         for i in range(reader.LMs[rank].total_records):
